@@ -548,7 +548,6 @@ void singlerun(int k)
     printf("\n Step: %d, Terminations:%d \n", k, wcount);
 }
 
-
 int main()
 {
     char sHistory[50], command[500];
