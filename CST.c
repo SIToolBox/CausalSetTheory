@@ -152,8 +152,10 @@ double rombint(double (*func)(double), double a, double b, double tol) // trapez
     return g0;
 }
 
+
 double rombint2D(double (*func)(double, double), double c, double a, double b, double tol)
 {
+    
     int MAXJ = 5;
     int MAXITER = 30, nint, i, j, k, jmax;
     double g[MAXJ + 1], h, gmax, g0, fourj, g1, error;
