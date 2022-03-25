@@ -388,6 +388,7 @@ void singlerun(int k)
     double temp_time, temp_a, temp_aold;
     double presenttime = 1.0;
     double c2oG = 4.1553e+49; // 1.24572205e58; //1.38605271e41; //;
+    omegav = 0.6925;
 
     //FILE *fpTest;
     //fpTest = fopen("test.d","w");
@@ -558,7 +559,7 @@ int main()
     printf("\nEnter Start step and Iteration per step");
     scanf("%d %d",&startstep, &stepnumber);
 
-    for (int i = startstep; i < startstep+stepnumber; i++) //R
+    for (int i = startstep*stepnumber; i < (startstep+1)*stepnumber; i++) //R
     {
         sprintf(sHistory,"History_%d.d",i);
         fHistory = fopen(sHistory,"w");
