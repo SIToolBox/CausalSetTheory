@@ -406,7 +406,7 @@ void singlerun(int k)
         maxi = i;
         time_CST_Store[i] = time1;
 
-        if (T_STEP == 1) // uses 1Mpc time steps
+        if (T_STEP == 1) // uses 1Mpc time steps 
         {
 
             if (time1 > presenttime && timeold < presenttime)
