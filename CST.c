@@ -9,9 +9,8 @@
 
 using namespace std;
 
-#define N_CST_Store 10000
-#define R 1000  //number of runs
-#define T_STEP 1  //if 1, timestep is 1Mpc time. if zero, it is 1e-4 in scale factor
+#define N_CST_Store 43000
+#define T_STEP 0  //if 1, timestep is 1Mpc time. if zero, it is 1e-4 in scale factor
 
 // Random number generators
 // ---------------------------------------
@@ -22,11 +21,11 @@ using namespace std;
 
 int lsprint = 0;
 int error_index = 0;
-const int N_CST = 10000;
-double N = 10000.0;
+//const int N_CST = 10000;
+double N = 43000.0;
 double alpha=0.01;  //controls the magnitude of the fluctuations
-//int stucki;
-//double stuck,
+int maxi = 0; 
+
 
 static double pi = 3.14159265;
 
@@ -152,7 +151,6 @@ double rombint(double (*func)(double), double a, double b, double tol) // trapez
     return g0;
 }
 
-
 double rombint2D(double (*func)(double, double), double c, double a, double b, double tol)
 {
     
@@ -206,25 +204,10 @@ double rombint2D(double (*func)(double, double), double c, double a, double b, d
     return g0;
 }
 
-double get_omega(int i){
-    if(i==0) return omegav_CST_Store[0];
-    if(fabs(omegav_CST_Store[i]) > 1.0e95){
-        omegav_CST_Store[i] = get_omega(i-1);
-        }
-    return omegav_CST_Store[i];
-}
-
 double omegaDyn(double a)
 {
-    int i = (int)(a * N_CST_Store + 1.0e-9);
-    double mytest;
-
-    if (a > 1.0)  i = N_CST_Store;
-    if (a < 1.0e-8)  i = 0;
-    if (i < 1)  i = 1;
-    //if(omegav != omegav_CST_Store[i-1]) printf("\nHHHHHHHHHHHHHHHHHHHHHH %d %e %e %e %e",i,omegav, omegav_CST_Store[i-1], omegav_CST_Store[i], omegav_CST_Store[i+1]);
     return omegav * pow(a, 4);
-}
+    }
 
 double CSTdtauda(double a)
 {
@@ -235,9 +218,7 @@ double CSTdtauda(double a)
     double dtauda1;
     double grho2; // Its a temporary variable for storing the total density
 
-    // grho2 = Variables.grhom* (Variables.omegac + Variables.omegab) * a + Variables.grhog + Variables.grhor * Variables.annur + Variables.grhonr * Variables.annunr * rhonu + Variables.grhom * omegaDyn(a) + Variables.grhom*Variables.omegak*a*a;
     grho2 = Variables.grhom * (Variables.omegac + Variables.omegab) * a + Variables.grhog + Variables.grhom * omegaDyn(a);
-    // grho2 = Variables.grhom* (Variables.omegac + Variables.omegab) * a + Variables.grhog;
 
     if (grho2 < 0)
     {
@@ -286,6 +267,10 @@ double rand_gauss(double mu, double sigma)
 double CSTCalctau(double a)
 {
     int i = (int)(a * N_CST_Store) + 1; // e-9 is just to ensure that you don't get into trouble with 2.9999...
+    if(fabs(a*N_CST_Store - (int)(a * N_CST_Store)) < 1.0e-6)
+        i = (int)(a * N_CST_Store-1.0e-6) + 1;    
+    
+    if(i>maxi) i=maxi;
 
     if (a > 1.0)
         i = N_CST_Store;
@@ -300,9 +285,7 @@ double CSTCalctau(double a)
     {
         if (tau_CST_Store[i - 1] < 0.0)
             CSTCalctau(a - 1.0 / N_CST_Store);
-        // printf("\n LL: %e %e %e %e )\n", a_CST_Store[i - 1], tau_CST_Store[i-1],tau_CST_Store[i - 1] + rombint(CSTdtauda, a_CST_Store[i - 1], a_CST_Store[i], toler),tau_CST_Store[i]);
         tau_CST_Store[i] = tau_CST_Store[i - 1] + rombint(CSTdtauda, a_CST_Store[i - 1], a_CST_Store[i], toler);
-        // printf("\nMM: %e %e\n", a_CST_Store[i], tau_CST_Store[i]);
     }
 
     if(lsprint==1)
@@ -327,21 +310,23 @@ double CSTCalcVolume(double a)
 {
     int j;
     int i = (int)(a * N_CST_Store) + 1;
-    double mytest;
+    if(fabs(a*N_CST_Store - (int)(a * N_CST_Store)) < 1.0e-6)
+        i = (int)(a * N_CST_Store - 1.0e-6) + 1;
 
+    double mytest;
+    if(i>maxi) i=maxi;
+    
     if (a > 1.0)
         i = N_CST_Store;
     if (a < 1.0e-8)
         return 0;
-    if (i < 0)
+    if (i <= 0)
     {
         for (j = 0; j < 4; j++)
             vol_CST_Store[j][0] = 0.0;
         return 0.0;
     }
 
-    //lsprint = 1; printf("\nMid"); CSTCalctau(a); printf("\nMidEnd"); lsprint = 0;
-    // printf("\nKK");
     for (j = 0; j < 4; j++)
     {
         
@@ -354,21 +339,12 @@ double CSTCalcVolume(double a)
             }
         }
 
-    //lsprint = 1; printf("\nNMid"); CSTCalctau(a); printf("\nNMidEnd"); lsprint = 0;
+
     double tau = CSTCalctau(a), Vol = 0.0,Vol1 = 0.0,Vol2 = 0.0,Vol3 = 0.0;
 
     int factor[] = {1, -3, 3, -1};
     for (j = 0; j < 4; j++)
-    {
         Vol += factor[j] * pow(tau, 3 - j) * (vol_CST_Store[j][i - 1] + rombint2D(CSTCalcdVolMomentda, 1.0 * j, a_CST_Store[i - 1], a, toler));
-        // Vol1 = vol_CST_Store[j][i - 1] + rombint2D(CSTCalcdVolMomentda, 1.0 * j, a_CST_Store[i - 1], a, toler);
-        // Vol2 += factor[j] * pow(tau, 3 - j) * (rombint2D(CSTCalcdVolMomentda, 1.0 * j, a_CST_Store[i - 1], a, toler));
-        // Vol3 += factor[j] * pow(tau, 3 - j) * (vol_CST_Store[j][i - 1]);        
-        //printf("\n(%e %e %e) %e %e",vol_CST_Store[j][i - 1], Vol1, vol_CST_Store[j][i], Vol3, Vol2);
-        }
-    //printf("\n------------------------------- My a: %e",a);
-
-    // lsprint = 1;  CSTCalctau(a);  lsprint = 0;
 
     return (4 * pi / 3) * Vol;
 }
@@ -387,13 +363,10 @@ void singlerun(int k)
     double time1, timeold;
     double temp_time, temp_a, temp_aold;
     double presenttime = 1.0;
-    double c2oG = 4.1553e+49; // 1.24572205e58; //1.38605271e41; //;
+    double c2oG = 4.1553e+49; 
     omegav = 0.6925;
 
-    //FILE *fpTest;
-    //fpTest = fopen("test.d","w");
-
-    srand(time(0));
+    //srand(time(0));
     aold = 1.0e-8;
     taurmtestold = 0.0;
     dVoldaold = 0.0;
@@ -406,8 +379,6 @@ void singlerun(int k)
     timeold = 0.0;
     temp_aold = 1.0e-8;
 
-    //printf("1St: %e",omegav);
-
     for (int i = 0; i <= N_CST_Store; i++)
     {
         a_CST_Store[i] = i / N;
@@ -418,7 +389,6 @@ void singlerun(int k)
         for (j = 0; j < 4; j++)
             vol_CST_Store[j][i] = -999999999.9;
     }
-    //printf("2Nd: %e",omegav);
 
     a_CST_Store[0] = 1.0e-8;
     tau_CST_Store[0] = 0.0;
@@ -428,13 +398,14 @@ void singlerun(int k)
     double H, omegaoH2;
     clock_t begin, end;
 
-    for (int i = 0; i < N_CST; i++)
+    for (int i = 0; i < N_CST_Store; i++)
     {
         a = i / N;
         omegav_CST_Store[i] = omegav;
         time1 = timeold + rombint(CSTdtimeda, aold, a, toler); // in steps of a, the codes integrates to find t(a)
-        
+        maxi = i;
         time_CST_Store[i] = time1;
+
         if (T_STEP == 1) // uses 1Mpc time steps
         {
 
@@ -446,21 +417,16 @@ void singlerun(int k)
                                                                                           // this is being used to integrate Friedmann between time and some newtime greater than presenttime+1;
                                                                                           // while we should use it to integrate from presenttime to presenttime+1
                 presenttime += 1;
-                //printf("\n%d) 3Nd: %e",i, omegav);
-                //begin = clock(); 
-                //lsprint = 1;  printf("\nBefore"); CSTCalctau(temp_a); printf("\nBeforeEnd"); lsprint = 0;
+
                 Vol = CSTCalcVolume(temp_a);
-                //end = clock(); printf("\n Vol: %d %e %e sec",i,temp_a,(double)(end-begin)/CLOCKS_PER_SEC); begin = end;
-                // exit(1);
+
                 zeta = rand_gauss(0, 1);
                 S = (Sold + alpha * zeta * sqrt(Vol - Volold));
                 rho = S / Vol;
                 
-                
+                //printf("%d %e %e %e %e %e %e %e\n", i, temp_a, presenttime, CSTCalctau(temp_a), CSTdtimeda(a), Vol, omegav, zeta);                
                 fprintf(fHistory, "%d %e %e %e %e %e %e %e\n", i, temp_a, presenttime, CSTCalctau(temp_a), CSTdtimeda(a), Vol, omegav, zeta);
-                printf("%d  %d %d %e %e %e %e %e  \n", k, wcount, i, Vol, temp_a, presenttime, omegav, zeta);                
                 fflush(stdout);
-
 
                 // This rho is in (Mpc^-2)
                 // We need to multiply it with c^2/G to convert it to kg . Mpc^-3
@@ -478,19 +444,12 @@ void singlerun(int k)
         }
         else if (T_STEP == 0) // uses steps in a
         {
-            if (i >= 0) // jump ahead the first 50 steps because the volume is too small, hence lambda is too big, hence the computation too slow
+            if (i >= 30) // jump ahead the first 50 steps because the volume is too small, hence lambda is too big, hence the computation too slow
             {
                 Vol = CSTCalcVolume(a);
                 zeta = rand_gauss(0, 1);
                 S = (Sold + alpha * zeta * sqrt(Vol - Volold));
-                if (Vol <= 0.0) //#to avoid infinity at first step
-                {
-                    rho = 0;
-                }
-                else
-                {
-                    rho = S / Vol;
-                }
+                rho = S / Vol;
 
                 // This rho is in (Mpc^-2)
                 // We need to multiply it with c^2/G to convert it to kg . Mpc^-3
@@ -498,6 +457,10 @@ void singlerun(int k)
                 // G = 6.6743e-11 m^3 /kg /s^2
                 // Mpc = 3.085678e22 m
                 // c^2/G = ( c^2 / G ) 3.085678e22 = 4.1553e+49 kg/Mpc
+
+                printf("%d %e %e %e %e %e\n", i, a, CSTdtimeda(a), Vol, omegav, zeta);
+                fprintf(fHistory,"%d %e %e %e %e %e\n", i, a, CSTdtimeda(a), Vol, omegav, zeta);
+                fflush(stdout);
 
                 rho = rho * c2oG;
 
@@ -529,34 +492,21 @@ void singlerun(int k)
             }
         }
 
-        // updates
-
-        //printf("\n ---------------------------- Hold: %d %e",i,omegav);
-        
-        // H = 1 / a / CSTdtimeda(a);
-        //omegaoH2 = omegav * (Variables.grhom / (3 * H * H));
-
         aold = a;
         timeold = time1;
-
+        while(presenttime<timeold)  
+            presenttime++;
     }
-    //for (int i = 0; i <= N_CST; i++)
-    //{
-    //    fprintf(fomegaHistory, "%f   ", omegav_CST_Store[i]);
-    //    fprintf(ftimeHistory, "%f   ", time_CST_Store[i]);
-    //    fprintf(ftauHistory, "%f   ", tau_CST_Store[i]);
-    //    fprintf(fomegaH2History, "%f   ", omegaoH2_CST_Store[i]);
-    //    }
 
     printf("\n Step: %d, Terminations:%d \n", k, wcount);
 }
 
 int main()
 {
-    char sHistory[50], command[500];
+    char sHistory[500], command[500];
     int srandom;
     int startstep, stepnumber;
-    printf("\nEnter Start step and Iteration per step");
+    printf("\nEnter Start step and Iteration per step:\n");
     scanf("%d %d",&startstep, &stepnumber);
 
     for (int i = startstep*stepnumber; i < (startstep+1)*stepnumber; i++) //R
@@ -573,10 +523,9 @@ int main()
         {
             printf("\n Negative H^2 occured\n");
             fclose(fHistory);
-            sprintf(command,"N_%s",sHistory);
+            sprintf(command,"N_History_%d.d",i);
             rename(sHistory, command);
         }
-        fflush(stdout);
 
     } // end of the for loop for repeating the run
 
