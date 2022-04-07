@@ -398,7 +398,7 @@ void singlerun(int k)
     double H, omegaoH2;
     clock_t begin, end;
 
-    for (int i = 0; i < N_CST_Store; i++)
+    for (int i = N_CST_Store; i > 0; i++)
     {
         a = i / N;
         omegav_CST_Store[i] = omegav;
@@ -406,43 +406,7 @@ void singlerun(int k)
         maxi = i;
         time_CST_Store[i] = time1;
 
-        if (T_STEP == 1) // uses 1Mpc time steps 
-        {
-
-            if (time1 > presenttime && timeold < presenttime)
-            {
-                temp_a = aold + (presenttime - timeold) / (time1 - timeold) * (a - aold); //!!! is updating rho_lambda at temp_a,
-                                                                                          // which has the same ratio of distance between a_old and a that presenttime has between timeold and time
-                                                                                          // this is aimed to be the corresponding a(presenttime), but it's only approximate
-                                                                                          // this is being used to integrate Friedmann between time and some newtime greater than presenttime+1;
-                                                                                          // while we should use it to integrate from presenttime to presenttime+1
-                presenttime += 1;
-
-                Vol = CSTCalcVolume(temp_a);
-
-                zeta = rand_gauss(0, 1);
-                S = (Sold + alpha * zeta * sqrt(Vol - Volold));
-                rho = S / Vol;
-                
-                //printf("%d %e %e %e %e %e %e %e\n", i, temp_a, presenttime, CSTCalctau(temp_a), CSTdtimeda(a), Vol, omegav, zeta);                
-                fprintf(fHistory, "%d %e %e %e %e %e %e %e\n", i, temp_a, presenttime, CSTCalctau(temp_a), CSTdtimeda(a), Vol, omegav, zeta);
-                fflush(stdout);
-
-                // This rho is in (Mpc^-2)
-                // We need to multiply it with c^2/G to convert it to kg . Mpc^-3
-                // c = 299792458 m/s
-                // G = 6.6743e-11 m^3 /kg /s^2
-                // Mpc = 3.085678e22 m
-                // c^2/G = ( c^2 / G ) 3.085678e22 = 4.1553e+49 kg/Mpc
-
-                rho = rho * c2oG;
-                omegav = rho / rhocr; // If its commented then it will give LCDM.
-
-                Volold = Vol;
-                Sold = S;
-            }
-        }
-        else if (T_STEP == 0) // uses steps in a
+        if (T_STEP == 0) // uses steps in a
         {
             if (i >= 30) // jump ahead the first 50 steps because the volume is too small, hence lambda is too big, hence the computation too slow
             {
@@ -464,28 +428,6 @@ void singlerun(int k)
 
                 rho = rho * c2oG;
 
-                omegav = rho / rhocr; // If its commented then it will give LCDM.
-                Volold = Vol;
-                Sold = S;
-            }
-        }
-        else if (T_STEP == 2) // uses volume of past light cone as time coordinate
-        {
-            Vol = CSTCalcVolume(a);
-            if (Vol - Volold > 1) // only update omegav if .1 (Mpc^4) of volume has been increased
-            {
-
-                zeta = rand_gauss(0, 1);
-                S = (Sold + alpha * zeta * sqrt(Vol - Volold));
-                if (Vol <= 0.0) //#to avoid infinity at first step
-                {
-                    rho = 0;
-                }
-                else
-                {
-                    rho = S / Vol;
-                }
-                rho = rho * c2oG;
                 omegav = rho / rhocr; // If its commented then it will give LCDM.
                 Volold = Vol;
                 Sold = S;

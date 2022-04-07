@@ -501,6 +501,67 @@ void singlerun(int k)
     printf("\n Step: %d, Terminations:%d \n", k, wcount);
 }
 
+double calcChi2(double omegaH2, double alpha, int k)
+{
+    try{
+        
+    }
+    catch(...)
+    {
+        return 999999999.0;
+    }
+}
+
+int mcmc()
+{
+    // Initial 
+    double omegamH2, alpha, old_omegamH2, old_alpha, delta_omegamH2_alpha, delta_alpha_omegamH2, delta_omegamH2, delta_alpha; 
+    double low_omegaH2 = 0.12, high_omegaH2 = 0.16, std_omegaH2 = 0.003;
+    double low_alpha = 0.005, high_alpha = 0.025, std_alpha = 0.003;
+
+    
+
+    for( int jj = 0; jj<50000; jj++)
+    {
+        do
+        {
+            delta_omegamH2_alpha = rand_gauss(0.0,1.0); 
+            delta_omegamH2 = delta_omegamH2_alpha *  std_omegaH2;
+            omegamH2 = old_omegamH2 + delta_omegamH2;
+            } while(( omegaH2 < low_omegaH2 ) || ( omegaH2 > high_omegaH2 ));
+
+        do
+        {
+            delta_alpha_omegamH2 = rand_gauss(0.0,1.0);
+            delta_alpha = delta_alpha_omegamH2 * std_alpha;
+            alpha = old_alpha + delta_alpha;
+            } while(( alpha < low_alpha ) || ( alpha > high_alpha ));
+  
+        Chi2 = calcChi2(omegaH2, alpha, jj);
+
+        if( Chi2 < Chi2old )    // Accept It
+        {
+            old_alpha = alpha;
+            old_omegamH2 = omegaH2;
+            Chi2old = Chi2;
+            }
+        else
+        {
+            u = exp(Chi2old - Chi2);
+            if(u > ran3())
+            {
+                old_alpha = alpha;
+                old_omegamH2 = omegaH2;
+                Chi2old = Chi2;
+                }
+            }
+        }
+
+    printf("%d %e %e %e \n", jj, old_omegamH2, old_alpha, 2*Chi2);
+    }
+
+
+
 int main()
 {
     char sHistory[500], command[500];
